@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <base target="_self">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediScan AI - Medical Image Diagnosis Platform</title>
+    <meta name="description" content="AI-powered chest X-ray and CT scan analysis platform for detecting pneumonia, tuberculosis, COVID-19 and other chest diseases with explainable AI.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0c4a6e;
+            --primary-light: #0369a1;
+            --primary-dark: #082f49;
+            --accent: #06b6d4;
+            --accent-light: #67e8f9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --background: #f0f9ff;
+            --card-bg: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .gradient-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, var(--accent) 100%);
+        }
+
+        .gradient-card {
+            background: linear-gradient(135deg, rgba(12,74,110,0.05) 0%, rgba(6,182,212,0.05) 100%);
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px -12px rgba(0,0,0,0.15);
+        }
+
+        .upload-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(6,182,212,0.05);
+        }
+
+        .heatmap-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            mix-blend-mode: multiply;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .animate-pulse-soft {
+            animation: pulse-soft 2s ease-in-out infinite;
+        }
+
+        .slide-in {
+            animation: slideIn 0.4s ease forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            overflow: hidden;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        .confidence-ring {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .confidence-ring svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+        }
+        .confidence-ring .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            z-index: 1;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .sidebar-item {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-item.active {
+            background: rgba(6,182,212,0.1);
+            border-left-color: var(--accent);
+            color: var(--primary);
+        }
+        .sidebar-item:hover:not(.active) {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .modal-overlay {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 2px;
+        }
+
+        .floating-shape {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.07;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 50;
+                flex-direction: row;
+                height: auto !important;
+                padding: 0.5rem !important;
+                border-radius: 16px 16px 0 0;
+                background: rgba(255,255,255,0.95);
+                backdrop-filter: blur(12px);
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            }
+            .sidebar .sidebar-item {
+                flex: 1;
+                flex-direction: column;
+                padding: 0.5rem !important;
+                border-left: none !important;
+                border-bottom: 2px solid transparent;
+                font-size: 0.65rem;
+                text-align: center;
+            }
+            .sidebar .sidebar-item.active {
+                border-bottom-color: var(--accent);
+            }
+            .sidebar .sidebar-item i {
+                margin: 0 0 0.25rem 0 !important;
+                font-size: 1.1rem !important;
+            }
+            .sidebar .logo-section {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding-bottom: 5rem !important;
+            }
+            .grid-cols-3 {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ============================================================ -->
+    <!--  APP CONTAINER                                                -->
+    <!-- ============================================================ -->
+    <div id="app" class="min-h-screen flex">
+
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="sidebar w-64 h-screen fixed left-0 top-0 flex flex-col gradient-primary text-white z-40 shadow-2xl" style="border-right: 1px solid rgba(255,255,255,0.1);">
+
+            <!-- Logo -->
+            <div class="logo-section px-5 py-6 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                        <i class="fas fa-x-ray text-xl text-accent-light"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold tracking-tight">MediScan AI</h1>
+                        <p class="text-xs text-white/70">Diagnosis Platform</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nav Items -->
+            <nav class="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin" id="sidebar-nav">
+                <!-- rendered by JS -->
+            </nav>
+
+            <!-- User info at bottom -->
+            <div id="sidebar-user" class="px-5 py-4 border-t border-white/10">
+                <!-- rendered by JS -->
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content flex-1 ml-64 min-h-screen" id="main-content">
+            <!-- Top bar -->
+            <header id="top-bar" class="glass-effect sticky top-0 z-30 px-6 py-3 flex items-center justify-between border-b border-gray-200/50">
+                <div>
+                    <h2 id="page-title" class="text-xl font-bold text-slate-800">Dashboard</h2>
+                    <p id="page-subtitle" class="text-sm text-slate-500">Overview of your medical diagnosis platform</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button onclick="handleNotificationClick()" class="relative p-2 rounded-lg hover:bg-slate-100 transition" aria-label="Notifications">
+                        <i class="fas fa-bell text-slate-500 text-lg"></i>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <div class="flex items-center gap-2 text-sm text-slate-600">
+                        <div class="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold">
+                            DR
+                        </div>
+                        <span class="hidden sm:inline font-medium">Dr. Sarah Chen</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page content area -->
+            <div id="page-content" class="p-6">
+                <!-- rendered by JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- ============================================================ -->
+    <!--  MODAL CONTAINER                                              -->
+    <!-- ============================================================ -->
+    <div id="modal-container"></div>
+
+    <!-- ============================================================ -->
+    <!--  TOAST CONTAINER                                              -->
+    <!-- ============================================================ -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <script>
+    // ================================================================
+    //  DATA LAYER
+    // ================================================================
+
+    const siteInfo = {
+        name: "MediScan AI",
+        tagline: "Diagnosis Platform",
+        doctorName: "Dr. Sarah Chen",
+        doctorInitials: "DR",
+        hospital: "City General Hospital"
+    };
+
+    const sidebarItems = [
+        { id: "dashboard",       label: "Dashboard",       icon: "fa-chart-pie",       badge: null },
+        { id: "upload",          label: "Analyze Image",   icon: "fa-cloud-upload-alt", badge: null },
+        { id: "history",         label: "Patient History",  icon: "fa-history",         badge: "12" },
+        { id: "reports",         label: "Reports",          icon: "fa-file-medical-alt", badge: "4" },
+        { id: "patients",        label: "Patients",         icon: "fa-users",           badge: null },
+        { id: "model-stats",     label: "Model Stats",      icon: "fa-brain",           badge: null }
+    ];
+
+    const dashboardStats = [
+        { label: "Total Diagnoses",    value: "1,247",  change: "+12.5%",  icon: "fa-stethoscope",    color: "from-cyan-500 to-blue-600" },
+        { label: "Patients Today",     value: "18",     change: "+3",      icon: "fa-user-injured",   color: "from-violet-500 to-purple-600" },
+        { label: "Avg. Confidence",    value: "96.8%",  change: "+0.4%",   icon: "fa-bullseye",       color: "from-emerald-500 to-teal-600" },
+        { label: "Model Accuracy",     value: "97.2%",  change: "+0.1%",   icon: "fa-brain",          color: "from-amber-500 to-orange-600" }
+    ];
+
+    const diseaseDistribution = [
+        { disease: "Normal",       count: 486,  color: "#10b981" },
+        { disease: "Pneumonia",    count: 312,  color: "#f59e0b" },
+        { disease: "Tuberculosis", count: 178,  color: "#ef4444" },
+        { disease: "COVID-19",     count: 145,  color: "#8b5cf6" },
+        { disease: "Other",        count: 126,  color: "#64748b" }
+    ];
+
+    const recentDiagnoses = [
+        { id: "D-1024", patient: "James Wilson",  age: 54,  gender: "M", disease: "Pneumonia",    confidence: 98.34, doctor: "Dr. Sarah Chen",  date: "2025-03-28", status: "completed", hasReport: true },
+        { id: "D-1023", patient: "Maria Lopez",    age: 38,  gender: "F", disease: "Normal",       confidence: 99.12, doctor: "Dr. Sarah Chen",  date: "2025-03-28", status: "completed", hasReport: true },
+        { id: "D-1022", patient: "Robert Kim",     age: 67,  gender: "M", disease: "Tuberculosis", confidence: 95.78, doctor: "Dr. James Park",   date: "2025-03-27", status: "completed", hasReport: true },
+        { id: "D-1021", patient: "Aisha Patel",    age: 41,  gender: "F", disease: "COVID-19",     confidence: 97.03, doctor: "Dr. Sarah Chen",  date: "2025-03-27", status: "completed", hasReport: false },
+        { id: "D-1020", patient: "Thomas Brown",   age: 72,  gender: "M", disease: "Pneumonia",    confidence: 96.51, doctor: "Dr. Emily Wong",  date: "2025-03-26", status: "completed", hasReport: true },
+        { id: "D-1019", patient: "Linda Garcia",   age: 29,  gender: "F", disease: "Normal",       confidence: 98.88, doctor: "Dr. Sarah Chen",  date: "2025-03-26", status: "completed", hasReport: true }
+    ];
+
+    const patientsList = [
+        { id: "P-1001", name: "James Wilson",   age: 54, gender: "M", phone: "(555) 123-4567", lastDiagnosis: "Pneumonia",    lastDate: "2025-03-28", visits: 3 },
+        { id: "P-1002", name: "Maria Lopez",     age: 38, gender: "F", phone: "(555) 234-5678", lastDiagnosis: "Normal",       lastDate: "2025-03-28", visits: 1 },
+        { id: "P-1003", name: "Robert Kim",      age: 67, gender: "M", phone: "(555) 345-6789", lastDiagnosis: "Tuberculosis", lastDate: "2025-03-27", visits: 5 },
+        { id: "P-1004", name: "Aisha Patel",     age: 41, gender: "F", phone: "(555) 456-7890", lastDiagnosis: "COVID-19",     lastDate: "2025-03-27", visits: 2 },
+        { id: "P-1005", name: "Thomas Brown",    age: 72, gender: "M", phone: "(555) 567-8901", lastDiagnosis: "Pneumonia",    lastDate: "2025-03-26", visits: 7 },
+        { id: "P-1006", name: "Linda Garcia",    age: 29, gender: "F", phone: "(555) 678-9012", lastDiagnosis: "Normal",       lastDate: "2025-03-26", visits: 1 },
+        { id: "P-1007", name: "David Chen",      age: 45, gender: "M", phone: "(555) 789-0123", lastDiagnosis: "COVID-19",     lastDate: "2025-03-25", visits: 2 },
+        { id: "P-1008", name: "Sarah Johnson",   age: 60, gender: "F", phone: "(555) 890-1234", lastDiagnosis: "Pneumonia",    lastDate: "2025-03-24", visits: 4 }
+    ];
+
+    const modelMetrics = [
+        { label: "Overall Accuracy",       value: "97.2%",  target: "Target: ≥95%",  color: "text-emerald-600", progress: 97.2 },
+        { label: "Precision",             value: "96.5%",  target: "Target: ≥93%",  color: "text-emerald-600", progress: 96.5 },
+        { label: "Recall (Sensitivity)",  value: "95.8%",  target: "Target: ≥93%",  color: "text-emerald-600", progress: 95.8 },
+        { label: "F1 Score",              value: "96.1%",  target: "Target: ≥93%",  color: "text-emerald-600", progress: 96.1 },
+        { label: "ROC-AUC",               value: "0.984",  target: "Target: ≥0.95", color: "text-emerald-600", progress: 98.4 },
+        { label: "Inference Time",         value: "42ms",  target: "Avg per image",  color: "text-cyan-600",   progress: null }
+    ];
+
+    // ================================================================
+    //  RENDER FUNCTIONS
+    // ================================================================
+
+    function renderSidebar(items, activeId) {
+        return items.map(item => `
+            <button class="sidebar-item w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-white/80 hover:text-white transition-all ${activeId === item.id ? 'active text-white' : ''}"
+                    data-nav="${item.id}" aria-label="Navigate to ${item.label}">
+                <i class="fas ${item.icon} w-5 text-center text-lg"></i>
+                <span class="flex-1 text-left">${item.label}</span>
+                ${item.badge ? `<span class="status-badge bg-white/20 text-white text-xs">${item.badge}</span>` : ''}
+            </button>
+        `).join("");
+    }
+
+    function renderSidebarUser(doctor) {
+        return `
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold">
+                    ${doctor.initials}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate">${doctor.name}</p>
+                    <p class="text-xs text-white/60 truncate">${doctor.hospital}</p>
+                </div>
+                <button onclick="handleLogout()" class="p-1.5 rounded-lg hover:bg-white/10 transition" aria-label="Logout">
+                    <i class="fas fa-sign-out-alt text-white/60"></i>
+                </button>
+            </div>
+        `;
+    }
+
+    function renderDashboardStats(items) {
+        return items.map((stat, i) => `
+            <div class="card-hover rounded-2xl bg-white p-5 shadow-sm border border-gray-100/80 fade-in" style="animation-delay: ${i * 0.08}s">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <p class="text-sm text-slate-500 font-medium">${stat.label}</p>
+                        <p class="text-3xl font-bold text-slate-800 mt-1">${stat.value}</p>
+                        <p class="text-sm font-medium mt-1 ${stat.change.startsWith('+') ? 'text-emerald-600' : 'text-red-500'}">
+                            <i class="fas fa-arrow-${stat.change.startsWith('+') ? 'up' : 'down'} mr-1"></i>${stat.change} vs yesterday
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center text-white shadow-lg">
+                        <i class="fas ${stat.icon} text-lg"></i>
+                    </div>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    function renderDiseaseChart(items) {
+        const total = items.reduce((s, d) => s + d.count, 0);
+        return items.map((d, i) => `
+            <div class="flex items-center gap-3 fade-in" style="animation-delay: ${i * 0.1}s">
+                <div class="w-3 h-3 rounded-full" style="background:${d.color}"></div>
+                <span class="text-sm text-slate-600 flex-1">${d.disease}</span>
+                <span class="text-sm font-semibold text-slate-800">${d.count}</span>
+                <div class="w-24 bg-slate-100 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all duration-1000" style="width:${(d.count/total)*100}%; background:${d.color}"></div>
+                </div>
+                <span class="text-xs text-slate-400 w-10 text-right">${((d.count/total)*100).toFixed(1)}%</span>
+            </div>
+        `).join("");
+    }
+
+    function renderRecentDiagnoses(items) {
+        return items.map(d => `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer" onclick="handleViewDiagnosis('${d.id}')">
+                <td class="py-3 px-2 text-sm font-medium text-slate-800">${d.id}</td>
+                <td class="py-3 px-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">${d.patient.split(' ').map(w=>w[0]).join('')}</div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-800">${d.patient}</p>
+                            <p class="text-xs text-slate-400">${d.age} yrs, ${d.gender}</p>
+                        </div>
+                    </div>
+                </td>
+                <td class="py-3 px-2">
+                    <span class="status-badge ${d.disease === 'Normal' ? 'bg-emerald-100 text-emerald-700' : d.disease === 'Pneumonia' ? 'bg-amber-100 text-amber-700' : d.disease === 'Tuberculosis' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}">
+                        ${d.disease}
+                    </span>
+                </td>
+                <td class="py-3 px-2 text-sm font-semibold text-slate-700">${d.confidence.toFixed(2)}%</td>
+                <td class="py-3 px-2 text-sm text-slate-500">${d.doctor}</td>
+                <td class="py-3 px-2 text-sm text-slate-400">${d.date}</td>
+                <td class="py-3 px-2">
+                    <span class="status-badge bg-emerald-100 text-emerald-700 text-xs"><i class="fas fa-check-circle mr-1"></i>Completed</span>
+                </td>
+                <td class="py-3 px-2">
+                    ${d.hasReport ? `<button onclick="event.stopPropagation(); handleDownloadReport('${d.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-cyan-600 transition" aria-label="Download report"><i class="fas fa-download"></i></button>` : ''}
+                    <button onclick="event.stopPropagation(); handleViewDiagnosis('${d.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition" aria-label="View details"><i class="fas fa-eye"></i></button>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    function renderPatientsTable(items) {
+        return items.map(p => `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer" onclick="handleViewPatient('${p.id}')">
+                <td class="py-3 px-2 text-sm font-medium text-slate-800">${p.id}</td>
+                <td class="py-3 px-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-white text-xs font-bold">${p.name.split(' ').map(w=>w[0]).join('')}</div>
+                        <span class="font-medium text-slate-800">${p.name}</span>
+                    </div>
+                </td>
+                <td class="py-3 px-2 text-sm text-slate-600">${p.age}</td>
+                <td class="py-3 px-2 text-sm text-slate-600">${p.gender}</td>
+                <td class="py-3 px-2 text-sm text-slate-600">${p.phone}</td>
+                <td class="py-3 px-2">
+                    <span class="status-badge ${p.lastDiagnosis === 'Normal' ? 'bg-emerald-100 text-emerald-700' : p.lastDiagnosis === 'Pneumonia' ? 'bg-amber-100 text-amber-700' : p.lastDiagnosis === 'Tuberculosis' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'}">${p.lastDiagnosis}</span>
+                </td>
+                <td class="py-3 px-2 text-sm text-slate-400">${p.lastDate}</td>
+                <td class="py-3 px-2 text-sm text-slate-500">${p.visits}</td>
+            </tr>
+        `).join("");
+    }
+
+    function renderReportsList(items) {
+        return items.map((d, i) => `
+            <div class="card-hover rounded-xl bg-white p-5 shadow-sm border border-gray-100/80 fade-in" style="animation-delay: ${i * 0.08}s">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-100 to-blue-100 flex items-center justify-center text-cyan-600">
+                            <i class="fas fa-file-pdf text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-slate-800">Diagnosis Report - ${d.id}</p>
+                            <p class="text-sm text-slate-500">${d.patient} • ${d.disease} • ${d.date}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="handleDownloadReport('${d.id}')" class="px-4 py-2 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition text-sm font-medium flex items-center gap-2">
+                            <i class="fas fa-download"></i> PDF
+                        </button>
+                        <button onclick="handleViewDiagnosis('${d.id}')" class="p-2 rounded-lg hover:bg-slate-100 text-slate-400 transition">
+                            <i class="fas fa-external-link-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    function renderModelMetrics(items) {
+        return items.map(m => `
+            <div class="rounded-xl bg-white p-5 shadow-sm border border-gray-100/80">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-slate-600">${m.label}</span>
+                    <span class="text-lg font-bold ${m.color}">${m.value}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    ${m.progress !== null ? `
+                        <div class="progress-bar flex-1">
+                            <div class="fill bg-gradient-to-r from-cyan-400 to-blue-500" style="width: ${m.progress}%"></div>
+                        </div>
+                    ` : `<div class="flex-1"></div>`}
+                    <span class="text-xs text-slate-400">${m.target}</span>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ================================================================
+    //  PAGE RENDERERS
+    // ================================================================
+
+    function renderDashboardPage() {
+        const container = document.getElementById("page-content");
+        container.innerHTML = `
+            <!-- Stats grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="stats-grid">
+                ${renderDashboardStats(dashboardStats)}
+            </div>
+
+            <!-- Charts row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <!-- Disease Distribution -->
+                <div class="lg:col-span-2 rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80 card-hover">
+                    <div class="flex items-center justify-between mb-5">
+                        <h3 class="font-semibold text-slate-800"><i class="fas fa-chart-bar text-cyan-600 mr-2"></i>Disease Distribution</h3>
+                        <span class="text-xs text-slate-400">Last 30 days</span>
+                    </div>
+                    <div class="flex flex-col gap-3" id="disease-chart">
+                        ${renderDiseaseChart(diseaseDistribution)}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80 card-hover">
+                    <h3 class="font-semibold text-slate-800 mb-4"><i class="fas fa-bolt text-amber-500 mr-2"></i>Quick Actions</h3>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="navigateTo('upload')" class="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-cyan-50 to-blue-50 hover:from-cyan-100 hover:to-blue-100 transition group">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white shadow">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-sm font-semibold text-slate-700 group-hover:text-cyan-700">New Analysis</p>
+                                <p class="text-xs text-slate-500">Upload and diagnose a new image</p>
+                            </div>
+                            <i class="fas fa-arrow-right ml-auto text-slate-300 group-hover:text-cyan-500 transition"></i>
+                        </button>
+                        <button onclick="navigateTo('history')" class="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 hover:from-violet-100 hover:to-purple-100 transition group">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white shadow">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-sm font-semibold text-slate-700 group-hover:text-violet-700">View History</p>
+                                <p class="text-xs text-slate-500">Browse past diagnoses</p>
+                            </div>
+                            <i class="fas fa-arrow-right ml-auto text-slate-300 group-hover:text-violet-500 transition"></i>
+                        </button>
+                        <button onclick="navigateTo('reports')" class="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 transition group">
+                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow">
+                                <i class="fas fa-file-medical-alt"></i>
+                            </div>
+                            <div class="text-left">
+                                <p class="text-sm font-semibold text-slate-700 group-hover:text-emerald-700">Generate Report</p>
+                                <p class="text-xs text-slate-500">Create a PDF report</p>
+                            </div>
+                            <i class="fas fa-arrow-right ml-auto text-slate-300 group-hover:text-emerald-500 transition"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Diagnoses -->
+            <div class="rounded-2xl bg-white shadow-sm border border-gray-100/80 overflow-hidden card-hover">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-semibold text-slate-800"><i class="fas fa-clock text-cyan-600 mr-2"></i>Recent Diagnoses</h3>
+                    <button onclick="navigateTo('history')" class="text-sm text-cyan-600 hover:text-cyan-700 font-medium">View All →</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                                <th class="py-3 px-2 font-medium">ID</th>
+                                <th class="py-3 px-2 font-medium">Patient</th>
+                                <th class="py-3 px-2 font-medium">Disease</th>
+                                <th class="py-3 px-2 font-medium">Confidence</th>
+                                <th class="py-3 px-2 font-medium">Doctor</th>
+                                <th class="py-3 px-2 font-medium">Date</th>
+                                <th class="py-3 px-2 font-medium">Status</th>
+                                <th class="py-3 px-2 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-table-body">
+                            ${renderRecentDiagnoses(recentDiagnoses.slice(0, 5))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderUploadPage() {
+        const container = document.getElementById("page-content");
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <!-- Upload Section -->
+                <div class="lg:col-span-3">
+                    <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80">
+                        <h3 class="font-semibold text-slate-800 mb-1"><i class="fas fa-cloud-upload-alt text-cyan-600 mr-2"></i>Upload Medical Image</h3>
+                        <p class="text-sm text-slate-500 mb-5">Upload a chest X-ray or CT scan for AI-powered analysis</p>
+
+                        <div id="upload-zone" class="upload-zone rounded-2xl p-10 text-center" onclick="document.getElementById('file-input').click()">
+                            <div class="max-w-sm mx-auto">
+                                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-cyan-100 to-blue-100 flex items-center justify-center">
+                                    <i class="fas fa-cloud-upload-alt text-3xl text-cyan-500"></i>
+                                </div>
+                                <p class="text-lg font-semibold text-slate-700">Drop image here or click to browse</p>
+                                <p class="text-sm text-slate-400 mt-1">Supports JPG, PNG, JPEG, DICOM</p>
+                                <div class="mt-4 flex justify-center gap-2">
+                                    <span class="px-3 py-1 bg-slate-100 rounded-full text-xs text-slate-600">Max 20MB</span>
+                                    <span class="px-3 py-1 bg-slate-100 rounded-full text-xs text-slate-600">512×512px min</span>
+                                </div>
+                            </div>
+                            <input type="file" id="file-input" accept="image/*,.dcm" class="hidden" onchange="handleFileUpload(event)">
+                        </div>
+
+                        <!-- Preview & Results -->
+                        <div id="analysis-section" class="hidden mt-6">
+                            <!-- Image Preview -->
+                            <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                                <div class="relative flex-1 rounded-xl overflow-hidden bg-slate-100">
+                                    <img id="preview-image" class="w-full h-64 object-contain" alt="Uploaded X-ray preview">
+                                    <div id="heatmap-overlay" class="heatmap-overlay hidden"></div>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="font-semibold text-slate-800 mb-3">Analysis Results</h4>
+                                    <div id="results-content">
+                                        <!-- Filled by JS after analysis -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- GradCAM Visualization -->
+                            <div id="gradcam-section" class="hidden rounded-xl bg-gradient-card p-4 border border-slate-200">
+                                <h4 class="font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-fire text-orange-500"></i> Grad-CAM Heatmap
+                                </h4>
+                                <p class="text-sm text-slate-500 mb-3">Regions that influenced the AI decision (red = high importance)</p>
+                                <div class="relative rounded-lg overflow-hidden bg-slate-100">
+                                    <img id="gradcam-image" class="w-full h-48 object-contain" alt="Grad-CAM heatmap overlay">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar: Info & Tips -->
+                <div class="lg:col-span-2">
+                    <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80 card-hover mb-4">
+                        <h4 class="font-semibold text-slate-700 mb-3"><i class="fas fa-info-circle text-cyan-600 mr-2"></i>Supported Conditions</h4>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center gap-2 text-sm text-slate-600"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Normal (Healthy)</div>
+                            <div class="flex items-center gap-2 text-sm text-slate-600"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Pneumonia</div>
+                            <div class="flex items-center gap-2 text-sm text-slate-600"><span class="w-2 h-2 rounded-full bg-red-500"></span> Tuberculosis</div>
+                            <div class="flex items-center gap-2 text-sm text-slate-600"><span class="w-2 h-2 rounded-full bg-purple-500"></span> COVID-19</div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80 card-hover mb-4">
+                        <h4 class="font-semibold text-slate-700 mb-3"><i class="fas fa-microchip text-cyan-600 mr-2"></i>Model Info</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between"><span class="text-slate-500">Architecture</span><span class="font-medium text-slate-700">EfficientNetB0</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Accuracy</span><span class="font-medium text-emerald-600">97.2%</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Training Data</span><span class="font-medium text-slate-700">112K+ X-rays</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Explainable AI</span><span class="font-medium text-cyan-600">Grad-CAM</span></div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl gradient-card p-5 border border-cyan-100/50">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-shield-alt text-cyan-500 mt-1"></i>
+                            <div>
+                                <p class="text-sm font-medium text-slate-700">HIPAA Compliant</p>
+                                <p class="text-xs text-slate-500">All data is encrypted and processed securely in accordance with medical privacy regulations.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderHistoryPage() {
+        const container = document.getElementById("page-content");
+        container.innerHTML = `
+            <div class="rounded-2xl bg-white shadow-sm border border-gray-100/80 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-semibold text-slate-800"><i class="fas fa-history text-cyan-600 mr-2"></i>Diagnosis History</h3>
+                        <p class="text-sm text-slate-500">Complete record of all AI diagnoses</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" placeholder="Search patients..." class="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300 w-48">
+                        </div>
+                        <button class="px-4 py-2 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition text-sm font-medium">
+                            <i class="fas fa-filter mr-1"></i> Filter
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 bg-slate-50/50">
+                                <th class="py-3 px-3 font-medium">ID</th>
+                                <th class="py-3 px-3 font-medium">Patient</th>
+                                <th class="py-3 px-3 font-medium">Disease</th>
+                                <th class="py-3 px-3 font-medium">Confidence</th>
+                                <th class="py-3 px-3 font-medium">Doctor</th>
+                                <th class="py-3 px-3 font-medium">Date</th>
+                                <th class="py-3 px-3 font-medium">Status</th>
+                                <th class="py-3 px-3 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            ${renderRecentDiagnoses(recentDiagnoses)}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+                    <span>Showing ${recentDiagnoses.length} of 1,247 records</span>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"><i class="fas fa-chevron-left"></i></button>
+                        <span class="px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 font-medium">1</span>
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">2</button>
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">3</button>
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderReportsPage() {
+        const container = document.getElementById("page-content");
+        const reportItems = recentDiagnoses.filter(d => d.hasReport);
+        container.innerHTML = `
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800"><i class="fas fa-file-medical-alt text-cyan-600 mr-2"></i>Medical Reports</h3>
+                    <p class="text-sm text-slate-500">Download or view generated PDF reports</p>
+                </div>
+                <button class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold hover:shadow-lg transition shadow">
+                    <i class="fas fa-plus mr-1"></i> New Report
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="reports-grid">
+                ${renderReportsList(reportItems)}
+            </div>
+            <div class="mt-6 p-6 rounded-2xl bg-white shadow-sm border border-gray-100/80 card-hover">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center text-amber-600">
+                        <i class="fas fa-qrcode text-2xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-slate-800">QR Code Verification</h4>
+                        <p class="text-sm text-slate-500">Each report includes a unique QR code for authenticity verification.</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">Active</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderPatientsPage() {
+        const container = document.getElementById("page-content");
+        container.innerHTML = `
+            <div class="rounded-2xl bg-white shadow-sm border border-gray-100/80 overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-semibold text-slate-800"><i class="fas fa-users text-cyan-600 mr-2"></i>Patient Records</h3>
+                        <p class="text-sm text-slate-500">Manage registered patients</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                            <input type="text" placeholder="Search..." class="pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-300 w-40">
+                        </div>
+                        <button class="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-sm font-semibold hover:shadow-lg transition shadow">
+                            <i class="fas fa-plus mr-1"></i> Add Patient
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-xs text-slate-500 uppercase tracking-wider border-b border-slate-100 bg-slate-50/50">
+                                <th class="py-3 px-3 font-medium">Patient ID</th>
+                                <th class="py-3 px-3 font-medium">Name</th>
+                                <th class="py-3 px-3 font-medium">Age</th>
+                                <th class="py-3 px-3 font-medium">Gender</th>
+                                <th class="py-3 px-3 font-medium">Phone</th>
+                                <th class="py-3 px-3 font-medium">Last Diagnosis</th>
+                                <th class="py-3 px-3 font-medium">Last Visit</th>
+                                <th class="py-3 px-3 font-medium">Visits</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patients-table-body">
+                            ${renderPatientsTable(patientsList)}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm text-slate-500">
+                    <span>Showing ${patientsList.length} of 248 patients</span>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"><i class="fas fa-chevron-left"></i></button>
+                        <span class="px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-700 font-medium">1</span>
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition">2</button>
+                        <button class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderModelStatsPage() {
+        const container = document.getElementById("page-content");
+        container.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80">
+                        <h3 class="font-semibold text-slate-800 mb-1"><i class="fas fa-brain text-cyan-600 mr-2"></i>Model Performance Metrics</h3>
+                        <p class="text-sm text-slate-500 mb-5">EfficientNetB0 trained on NIH ChestX-ray14 + custom datasets</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            ${renderModelMetrics(modelMetrics)}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confusion Matrix visualization -->
+                <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80 card-hover">
+                    <h4 class="font-semibold text-slate-800 mb-4"><i class="fas fa-th text-cyan-600 mr-2"></i>Confusion Matrix</h4>
+                    <div class="grid grid-cols-4 gap-1 text-center text-xs">
+                        ${['','Normal','Pneumonia','COVID-19'].map(h => `<div class="font-bold text-slate-500 py-2">${h}</div>`).join('')}
+                        ${[
+                            {label:'Normal', vals:[482,5,2,1], color:'emerald'},
+                            {label:'Pneumonia', vals:[3,301,4,2], color:'amber'},
+                            {label:'TB', vals:[1,2,173,1], color:'red'},
+                            {label:'COVID-19', vals:[2,3,1,139], color:'purple'}
+                        ].map(row => `
+                            ${[row.label, ...row.vals].map((v, i) => `
+                                <div class="py-2 px-1 rounded ${i===0 ? 'font-semibold text-slate-600 text-left' : `bg-${row.color}-50 text-${row.color}-700 font-medium`}">
+                                    ${v}
+                                </div>
+                            `).join('')}
+                        `).join('')}
+                        <div class="col-span-4 text-right text-xs text-slate-400 pt-2">Actual ↓ / Predicted →</div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl bg-white p-6 shadow-sm border border-gray-100/80 card-hover">
+                    <h4 class="font-semibold text-slate-800 mb-4"><i class="fas fa-chart-line text-cyan-600 mr-2"></i>ROC-AUC Curves</h4>
+                    <div class="flex flex-col gap-3">
+                        ${['Normal','Pneumonia','Tuberculosis','COVID-19'].map((d, i) => `
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm text-slate-600 w-28">${d}</span>
+                                <div class="flex-1 progress-bar">
+                                    <div class="fill bg-gradient-to-r from-cyan-400 to-blue-500" style="width: ${[0.99, 0.98, 0.97, 0.985][i]*100}%"></div>
+                                </div>
+                                <span class="text-sm font-semibold text-slate-700 w-14 text-right">${[0.99, 0.98, 0.97, 0.985][i].toFixed(3)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="mt-4 p-3 rounded-xl bg-gradient-card border border-slate-100">
+                        <p class="text-xs text-slate-500"><i class="fas fa-info-circle mr-1"></i> Macro-average ROC-AUC: <strong>0.981</strong> | Micro-average ROC-AUC: <strong>0.986</strong></p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // ================================================================
+    //  NAVIGATION & EVENT HANDLING
+    // ================================================================
+
+    let currentPage = "dashboard";
+    let activeFile = null;
+
+    function navigateTo(page) {
+        currentPage = page;
+        // Update sidebar
+        document.getElementById("sidebar-nav").innerHTML = renderSidebar(sidebarItems, page);
+        // Update title
+        const pageMap = {
+            dashboard:   { title: "Dashboard",      subtitle: "Overview of your medical diagnosis platform" },
+            upload:      { title: "Analyze Image",   subtitle: "Upload a chest X-ray or CT scan for AI analysis" },
+            history:     { title: "Patient History",  subtitle: "Browse all past diagnoses and reports" },
+            reports:     { title: "Medical Reports",  subtitle: "Download and manage PDF reports" },
+            patients:    { title: "Patients",         subtitle: "Manage registered patient records" },
+            "model-stats": { title: "Model Performance", subtitle: "Deep learning model metrics and evaluation" }
+        };
+        const info = pageMap[page] || pageMap.dashboard;
+        document.getElementById("page-title").textContent = info.title;
+        document.getElementById("page-subtitle").textContent = info.subtitle;
+
+        // Render page
+        switch(page) {
+            case "dashboard":   renderDashboardPage(); break;
+            case "upload":      renderUploadPage(); break;
+            case "history":     renderHistoryPage(); break;
+            case "reports":     renderReportsPage(); break;
+            case "patients":    renderPatientsPage(); break;
+            case "model-stats": renderModelStatsPage(); break;
+            default: renderDashboardPage();
+        }
+    }
+
+    // Event delegation for sidebar navigation
+    document.getElementById("sidebar-nav").addEventListener("click", function(e) {
+        const btn = e.target.closest("[data-nav]");
+        if (!btn) return;
+        e.preventDefault();
+        navigateTo(btn.dataset.nav);
+    });
+
+    // ================================================================
+    //  FILE UPLOAD HANDLING (simulated analysis)
+    // ================================================================
+
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        activeFile = file;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById("preview-image");
+            if (preview) preview.src = e.target.result;
+
+            const zone = document.getElementById("upload-zone");
+            if (zone) zone.classList.add("hidden");
+
+            const section = document.getElementById("analysis-section");
+            if (section) {
+                section.classList.remove("hidden");
+                // Animate in
+                section.classList.add("fade-in");
+            }
+
+            // Simulate analysis
+            simulateAnalysis(file);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function simulateAnalysis(file) {
+        const resultsContent = document.getElementById("results-content");
+        if (!resultsContent) return;
+
+        // Show loading
+        resultsContent.innerHTML = `
+            <div class="flex flex-col items-center py-8">
+                <div class="w-12 h-12 border-4 border-cyan-200 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
+                <p class="text-sm text-slate-500 animate-pulse-soft">Analyzing image with CNN...</p>
+                <div class="w-full max-w-xs mt-4 progress-bar">
+                    <div class="fill bg-gradient-to-r from-cyan-400 to-blue-500 animate-pulse-soft" style="width: 60%"></div>
+                </div>
+            </div>
+        `;
+
+        // Simulate processing delay
+        setTimeout(() => {
+            // Random results for demo
+            const diseases = ["Normal", "Pneumonia", "Tuberculosis", "COVID-19"];
+            const disease = diseases[Math.floor(Math.random() * 4)];
+            const confidence = 94 + Math.random() * 5.5;
+            const isNormal = disease === "Normal";
+
+            resultsContent.innerHTML = `
+                <div class="space-y-4 fade-in">
+                    <div class="flex items-center gap-3 p-3 rounded-xl ${isNormal ? 'bg-emerald-50' : 'bg-amber-50'}">
+                        <div class="w-12 h-12 rounded-full ${isNormal ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'} flex items-center justify-center">
+                            <i class="fas ${isNormal ? 'fa-check-circle' : 'fa-exclamation-triangle'} text-xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500">Diagnosis</p>
+                            <p class="text-lg font-bold ${isNormal ? 'text-emerald-700' : 'text-amber-700'}">${disease}</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <p class="text-xs text-slate-500 mb-1">Confidence Score</p>
+                        <div class="flex items-center gap-3">
+                            <div class="progress-bar flex-1">
+                                <div class="fill bg-gradient-to-r from-cyan-400 to-blue-500" style="width: ${confidence}%"></div>
+                            </div>
+                            <span class="text-lg font-bold text-slate-700">${confidence.toFixed(2)}%</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="p-2 rounded-lg bg-slate-50">
+                            <p class="text-xs text-slate-400">Model</p>
+                            <p class="text-sm font-semibold text-slate-700">EfficientNetB0</p>
+                        </div>
+                        <div class="p-2 rounded-lg bg-slate-50">
+                            <p class="text-xs text-slate-400">Inference</p>
+                            <p class="text-sm font-semibold text-slate-700">42 ms</p>
+                        </div>
+                    </div>
+
+                    <button onclick="showGradCAM()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-400 to-red-500 text-white text-sm font-semibold hover:shadow-lg transition shadow flex items-center justify-center gap-2">
+                        <i class="fas fa-fire"></i> View Grad-CAM Heatmap
+                    </button>
+
+                    <div class="flex gap-2">
+                        <button onclick="handleDownloadReport('D-NEW')" class="flex-1 py-2 rounded-lg bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition text-sm font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-file-pdf"></i> Report
+                        </button>
+                        <button onclick="handleSaveDiagnosis()" class="flex-1 py-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition text-sm font-medium flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            // Show heatmap section automatically after analysis
+            setTimeout(() => {
+                showGradCAM();
+            }, 800);
+        }, 2500);
+    }
+
+    function showGradCAM() {
+        const section = document.getElementById("gradcam-section");
+        const overlay = document.getElementById("heatmap-overlay");
+        const gradcamImg = document.getElementById("gradcam-image");
+
+        if (section) section.classList.remove("hidden");
+        if (overlay) {
+            overlay.classList.remove("hidden");
+            overlay.style.background = "radial-gradient(circle at 35% 45%, rgba(255,80,0,0.4) 0%, rgba(255,150,0,0.2) 30%, rgba(255,200,100,0.1) 60%, transparent 80%)";
+        }
+        // Set the original image as the GradCAM base
+        const preview = document.getElementById("preview-image");
+        if (gradcamImg && preview) {
+            gradcamImg.src = preview.src;
+        }
+
+        showToast("Grad-CAM heatmap generated successfully", "success");
+    }
+
+    // ================================================================
+    //  DIAGNOSIS ACTIONS
+    // ================================================================
+
+    function handleViewDiagnosis(id) {
+        const diag = recentDiagnoses.find(d => d.id === id);
+        if (!diag) return;
+        showModal(`
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-cyan-100 to-blue-100 flex items-center justify-center text-cyan-600 mb-3">
+                    <i class="fas fa-stethoscope text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">Diagnosis ${diag.id}</h3>
+                <p class="text-sm text-slate-500">${diag.date}</p>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Patient</span><span class="font-medium text-slate-800">${diag.patient}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Age / Gender</span><span class="font-medium text-slate-800">${diag.age} yrs / ${diag.gender}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Disease</span><span class="font-medium ${diag.disease === 'Normal' ? 'text-emerald-600' : 'text-amber-600'}">${diag.disease}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Confidence</span><span class="font-medium text-slate-800">${diag.confidence.toFixed(2)}%</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Doctor</span><span class="font-medium text-slate-800">${diag.doctor}</span></div>
+                <div class="flex justify-between py-2"><span class="text-slate-500">Report Available</span><span class="font-medium ${diag.hasReport ? 'text-emerald-600' : 'text-slate-400'}">${diag.hasReport ? 'Yes' : 'No'}</span></div>
+            </div>
+            <div class="flex gap-2 mt-6">
+                <button onclick="closeModal(); handleDownloadReport('${diag.id}')" class="flex-1 py-2.5 rounded-xl bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition text-sm font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-download"></i> Download Report
+                </button>
+                <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition text-sm font-medium">
+                    Close
+                </button>
+            </div>
+        `);
+    }
+
+    function handleViewPatient(id) {
+        const patient = patientsList.find(p => p.id === id);
+        if (!patient) return;
+        showModal(`
+            <div class="text-center mb-4">
+                <div class="w-16 h-16 mx-auto rounded-full bg-gradient-to-br from-violet-100 to-purple-100 flex items-center justify-center text-violet-600 mb-3">
+                    <i class="fas fa-user text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">${patient.name}</h3>
+                <p class="text-sm text-slate-500">${patient.id}</p>
+            </div>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Age</span><span class="font-medium text-slate-800">${patient.age} years</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Gender</span><span class="font-medium text-slate-800">${patient.gender}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Phone</span><span class="font-medium text-slate-800">${patient.phone}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Last Diagnosis</span><span class="font-medium ${patient.lastDiagnosis === 'Normal' ? 'text-emerald-600' : 'text-amber-600'}">${patient.lastDiagnosis}</span></div>
+                <div class="flex justify-between py-2 border-b border-slate-100"><span class="text-slate-500">Last Visit</span><span class="font-medium text-slate-800">${patient.lastDate}</span></div>
+                <div class="flex justify-between py-2"><span class="text-slate-500">Total Visits</span><span class="font-medium text-slate-800">${patient.visits}</span></div>
+            </div>
+            <div class="flex gap-2 mt-6">
+                <button onclick="closeModal(); navigateTo('history')" class="flex-1 py-2.5 rounded-xl bg-violet-50 text-violet-700 hover:bg-violet-100 transition text-sm font-medium flex items-center justify-center gap-2">
+                    <i class="fas fa-history"></i> View History
+                </button>
+                <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition text-sm font-medium">
+                    Close
+                </button>
+            </div>
+        `);
+    }
+
+    function handleDownloadReport(id) {
+        showToast("Report PDF is being generated...", "info");
+        setTimeout(() => {
+            showToast("Report downloaded successfully", "success");
+        }, 1500);
+    }
+
+    function handleSaveDiagnosis() {
+        showToast("Diagnosis saved to patient records", "success");
+    }
+
+    function handleNotificationClick() {
+        showToast("No new notifications", "info");
+    }
+
+    function handleLogout() {
+        showModal(`
+            <div class="text-center py-4">
+                <div class="w-16 h-16 mx-auto rounded-full bg-red-50 flex items-center justify-center text-red-500 mb-4">
+                    <i class="fas fa-sign-out-alt text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Logout</h3>
+                <p class="text-sm text-slate-500 mb-6">Are you sure you want to log out? Any unsaved progress will be lost.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition text-sm font-medium">Cancel</button>
+                    <button onclick="closeModal(); showToast('Logged out successfully', 'info')" class="flex-1 py-2.5 rounded-xl bg-red-500 text-white hover:bg-red-600 transition text-sm font-medium">Logout</button>
+                </div>
+            </div>
+        `);
+    }
+
+    // ================================================================
+    //  MODAL SYSTEM
+    // ================================================================
+
+    function showModal(htmlContent) {
+        const container = document.getElementById("modal-container");
+        container.innerHTML = `
+            <div class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay fade-in" onclick="if(event.target===this) closeModal()">
+                <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 slide-in max-h-[90vh] overflow-y-auto" onclick="event.stopPropagation()">
+                    <button onclick="closeModal()" class="float-right p-1 rounded-lg hover:bg-slate-100 transition text-slate-400" aria-label="Close modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    ${htmlContent}
+                </div>
+            </div>
+        `;
+    }
+
+    function closeModal() {
+        const container = document.getElementById("modal-container");
+        container.innerHTML = "";
+    }
+
+    // ================================================================
+    //  TOAST SYSTEM
+    // ================================================================
+
+    function showToast(message, type) {
+        const container = document.getElementById("toast-container");
+        const icons = { success: "fa-check-circle", error: "fa-exclamation-circle", info: "fa-info-circle", warning: "fa-exclamation-triangle" };
+        const colors = { success: "bg-emerald-50 border-emerald-200 text-emerald-700", error: "bg-red-50 border-red-200 text-red-700", info: "bg-cyan-50 border-cyan-200 text-cyan-700", warning: "bg-amber-50 border-amber-200 text-amber-700" };
+
+        const toast = document.createElement("div");
+        toast.className = `flex items-center gap-3 px-5 py-3 rounded-xl border shadow-lg ${colors[type] || colors.info} fade-in max-w-sm`;
+        toast.innerHTML = `
+            <i class="fas ${icons[type] || icons.info} text-lg"></i>
+            <span class="text-sm font-medium flex-1">${message}</span>
+            <button onclick="this.parentElement.remove()" class="p-1 rounded hover:bg-black/5 transition"><i class="fas fa-times"></i></button>
+        `;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.transition = "opacity 0.3s ease";
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // ================================================================
+    //  DRAG AND DROP SUPPORT
+    // ================================================================
+
+    document.addEventListener("dragenter", function(e) {
+        const zone = document.getElementById("upload-zone");
+        if (zone && zone.contains(e.target)) {
+            zone.classList.add("dragover");
+        }
+    });
+
+    document.addEventListener("dragleave", function(e) {
+        const zone = document.getElementById("upload-zone");
+        if (zone && zone.contains(e.target)) {
+            zone.classList.remove("dragover");
+        }
+    });
+
+    document.addEventListener("dragover", function(e) {
+        e.preventDefault();
+    });
+
+    document.addEventListener("drop", function(e) {
+        e.preventDefault();
+        const zone = document.getElementById("upload-zone");
+        if (zone && zone.contains(e.target)) {
+            zone.classList.remove("dragover");
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const input = document.getElementById("file-input");
+                if (input) {
+                    input.files = files;
+                    handleFileUpload({ target: { files: [files[0]] } });
+                }
+            }
+        }
+    });
+
+    // ================================================================
+    //  INITIALIZATION
+    // ================================================================
+
+    function init() {
+        // Render sidebar
+        document.getElementById("sidebar-nav").innerHTML = renderSidebar(sidebarItems, "dashboard");
+        // Render sidebar user
+        document.getElementById("sidebar-user").innerHTML = renderSidebarUser({
+            name: siteInfo.doctorName,
+            initials: siteInfo.doctorInitials,
+            hospital: siteInfo.hospital
+        });
+        // Render dashboard
+        renderDashboardPage();
+
+        // Set page title
+        document.title = "MediScan AI - Medical Image Diagnosis Platform";
+    }
+
+    init();
+    </script>
+</body>
+</html>
